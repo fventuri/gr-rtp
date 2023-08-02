@@ -1,0 +1,76 @@
+id: rtp_source
+label: RTP source
+category: '[rtp]'
+flags: [python, cpp, throttle]
+
+parameters:
+-   id: mcast_address
+    label: Multicast address
+    dtype: string
+-   id: ssrc
+    label: SSRC
+    dtype: int
+    default: 0
+-   id: output_mode
+    label: Output mode
+    dtype: enum
+    options: [gr_complex, ishort, float-one-channel, float-two-channels, short-one-channel, short-two-channels]
+    option_labels: [Complex, IShort, Float Mono, Float Stereo, Short Mono, Short Stereo]
+    option_attributes:
+      dtype: [gr_complex, short, float, float, short, short]
+      fcn: [c, s, f, f, s, s]
+      multiplicity: [1, 1, 1, 2, 1, 2]
+    default: gr_complex
+-   id: quiet
+    label: Quiet
+    dtype: enum
+    default: 'False'
+    options: ['True', 'False']
+    option_labels: ['Yes', 'No']
+
+outputs:
+-   domain: stream
+    dtype: ${ output_mode.dtype }
+    multiplicity: ${ output_mode.multiplicity }
+
+asserts:
+-   ${ 1 <= output_mode.multiplicity }
+
+templates:
+    imports: from gnuradio import rtp
+    make: rtp.source_${output_mode.fcn}(${mcast_address}, ${ssrc}, ${output_mode.multiplicity}, ${quiet})
+
+cpp_templates:
+    includes: ['#include <gnuradio/rtp/source.h>']
+    declarations: 'gr::rtp::source_${output_mode.fcn}::sptr ${id};'
+    make: |-
+      this->${id} = gr::rtp::source_${output_mode.fcn}::make(${mcast_address}${'.c_str()' if str(mcast_address)[0] != "'" and str(file)[0] != "\"" else ''}, ${ssrc}, ${output_mode.multiplicity}, ${quiet});
+    translations:
+        'True': 'true'
+        'False': 'false'
+
+documentation: |-
+    RTP Source Block:
+
+    This source block reads from an RTP stream (identified by its multicast address and SSRC) and can output the data in several formats: complex (suitable for I/Q streams), interleaved shorts (suitable for I/Q streams), float with one channeli (mono), float with two channels (stereo), short with one channel (mono), and short with two channels (stereo).
+
+    Multicast address:
+    The multicast address (or mDNS name) for the RTP stream
+
+    SSRC:
+    The Synchronization Source (SSRC) of the RTP session
+
+    Output mode:
+    - Complex: stream of I/Q values as floats
+    - IShort: stream of I/Q values as interleaved shorts
+    - Float Mono: for RTP streams with only one channel (outputs floats)
+    - Float Stereo: for RTP streams with two channels (outputs floats)
+    - Short Mono: for RTP streams with only one channel (outputs shorts)
+    - Short Stereo: for RTP streams with two channels (outputs shorts)
+
+    Quiet:
+    Enable/Disable info messages, for instance when a new session is created
+
+#  'file_format' specifies the version of the GRC yml format used in the file
+#  and should usually not be changed.
+file_format: 1
