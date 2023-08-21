@@ -182,8 +182,7 @@ int source_impl<gr_complex>::output_samples(const void *dp,
 {
     auto out = outs[0];
 
-    int samples;
-    int produced_items = 0;
+    int samples = 0;
 
     auto sdp = static_cast<const int16_t *>(dp);
     switch (type) {
@@ -205,7 +204,6 @@ int source_impl<gr_complex>::output_samples(const void *dp,
             out[i].real(static_cast<float>(left) / 32767.0f);
             out[i].imag(static_cast<float>(right) / 32767.0f);
         }
-        produced_items = 2 * samples;
         break;
     case PCM_MONO_PT: // Mono
     case PCM_MONO_24_PT:
@@ -224,14 +222,13 @@ int source_impl<gr_complex>::output_samples(const void *dp,
             out[i].real(static_cast<float>(d) / 32767.0f);
             out[i].imag(0.0);
         }
-        produced_items = 2 * samples;
         break;
     default:
-        produced_items = 0;
+        samples = 0;
         break; // ignore
     }
 
-    return produced_items;
+    return samples * n_out_chans;
 }
 
 template <>
@@ -242,8 +239,7 @@ int source_impl<float>::output_samples(const void *dp,
                                        int noutput_items,
                                        int n_out_chans) const
 {
-    int samples;
-    int produced_items = 0;
+    int samples = 0;
 
     if (n_out_chans == 1) {
         auto out = outs[0];
@@ -270,10 +266,9 @@ int source_impl<float>::output_samples(const void *dp,
                 int16_t d = ntohs(*sdp++);
                 out[i] = static_cast<float>(d) / 32767.0f;
             }
-            produced_items = samples;
             break;
         default:
-            produced_items = 0;
+            samples = 0;
             break; // ignore
         }
 
@@ -300,7 +295,6 @@ int source_impl<float>::output_samples(const void *dp,
                 out_left[i] = static_cast<float>(left) / 32767.0f;
                 out_right[i] = static_cast<float>(right) / 32767.0f;
             }
-            produced_items = 2 * samples;
             break;
         case PCM_MONO_PT: // Mono
         case PCM_MONO_24_PT:
@@ -320,18 +314,17 @@ int source_impl<float>::output_samples(const void *dp,
                 out_left[i] = df;
                 out_right[i] = df;
             }
-            produced_items = 2 * samples;
             break;
         default:
-            produced_items = 0;
+            samples = 0;
             break; // ignore
         }
 
     } else {
-        produced_items = 0;
+        samples = 0;
     }
 
-    return produced_items;
+    return samples * n_out_chans;
 }
 
 template <>
@@ -342,8 +335,7 @@ int source_impl<std::int16_t>::output_samples(const void *dp,
                                               int noutput_items,
                                               int n_out_chans) const
 {
-    int samples;
-    int produced_items = 0;
+    int samples = 0;
 
     if (n_out_chans == 1) {
         auto out = outs[0];
@@ -370,10 +362,9 @@ int source_impl<std::int16_t>::output_samples(const void *dp,
                 int16_t d = ntohs(*sdp++);
                 out[i] = d;
             }
-            produced_items = samples;
             break;
         default:
-            produced_items = 0;
+            samples = 0;
             break; // ignore
         }
 
@@ -400,7 +391,6 @@ int source_impl<std::int16_t>::output_samples(const void *dp,
                 out_left[i] = left;
                 out_right[i] = right;
             }
-            produced_items = 2 * samples;
             break;
         case PCM_MONO_PT: // Mono
         case PCM_MONO_24_PT:
@@ -419,18 +409,17 @@ int source_impl<std::int16_t>::output_samples(const void *dp,
                 out_left[i] = d;
                 out_right[i] = d;
             }
-            produced_items = 2 * samples;
             break;
         default:
-            produced_items = 0;
+            samples = 0;
             break; // ignore
         }
 
     } else {
-        produced_items = 0;
+        samples = 0;
     }
 
-    return produced_items;
+    return samples * n_out_chans;
 }
 
 template class source<gr_complex>;
