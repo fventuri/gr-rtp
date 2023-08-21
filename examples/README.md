@@ -10,6 +10,12 @@ monitor nws-pcm.local
 You should see an SSRC=162550, and you should hear 'something' (actual voice or static, depending if there's a NWS station broadcasting on 162.550MHz or not).
 If you don't see any SSRC when running 'monitor' or you don't hear any sound in your default audio device, you'll need to troubleshoot your ka9q-radio configuration before going ahead.
 
+If the test with 'monitor' is successful, you should be able to use the 'RTP source' block in a GNU Radio flowgraph.
+When the flograph is run, the RTP source block will try to connect to the selected RTP stream (defined by its multicast address and SSRC), and if successful it will display on the terminal a message like this:
+```
+rtp_source :info: New session from 162550@localhost:59817, type 116, pcm mono
+```
+
 
 ## NOAA radio FM
 This example uses ka9q-radio to demodulate the local NOAA weather station on 162.550MHz (FM).
