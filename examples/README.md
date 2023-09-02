@@ -13,7 +13,7 @@ If you don't see any SSRC when running 'monitor' or you don't hear any sound in 
 If the test with 'monitor' is successful, you should be able to use the 'RTP source' block in a GNU Radio flowgraph.
 When the flograph is run, the RTP source block will try to connect to the selected RTP stream (defined by its multicast address and SSRC), and if successful it will display on the terminal a message like this:
 ```
-rtp_source :info: New session from 162550@localhost:59817, type 116, pcm mono
+rtp_source :info: New session from 162550@localhost:59817, type 122, channels 1, samprate 12000
 ```
 
 
@@ -23,22 +23,29 @@ This example uses ka9q-radio to demodulate the local NOAA weather station on 162
 
 Below is the ka9q-radio radiod configuration file I used for this example.
 
-A couple of important notes:
-- the 'input' parameter will need to be changed based on your front-end receiver in ka9q-radio
-- recently (July/August 2023) the architecture of ka9q-radio radiod has changed and it now includes most of the front-end receivers; because of this, the format of its configuration file has changed; please refer to the examples distributed with ka9q-radio.
+Note that the SDR hardware configuration section will likely have to be changed to match your hardware SDR.
 
 ```
 # Standard national weather service broadcasts
 [global]
-input = rspdx-antC.local
-iface = lo
-samprate = 24000
-mode = fm
 status = nws.local
+hardware = sdrplay
+
+[sdrplay]
+device = sdrplay
+description = RSPdx - Antenna C
+#serial =
+antenna = Antenna C
+#samprate = 2000000        ; default is 2M
+lna-state = 2
+if-agc = yes
+
+frequency = 162480000
 
 [NWS]
+mode = fm
 data = nws-pcm.local
-freq = "162m400 162m425 162m450 162m475 162m500 162m525 162m550"'
+freq = "162m400 162m425 162m450 162m475 162m500 162m525 162m550"
 ```
 
 
@@ -48,18 +55,27 @@ This example uses ka9q-radio to down convert WSPR on 20m (14,095.6kHz USB).
 
 Below is the ka9q-radio radiod configuration file I used for this example.
 
-See te ka9q-radio notes above.
+Note that the SDR hardware configuration section will likely have to be changed to match your hardware SDR.
 
 ```
 # WSPR on HF bands
 [global]
-input = rspdx-antC.local
-iface = lo
-samprate = 12000
-mode = usb
 status = wspr.local
+hardware = sdrplay
+
+[sdrplay]
+device = sdrplay
+description = RSPdx - Antenna C
+#serial =
+antenna = Antenna C
+#samprate = 2000000        ; default is 2M
+lna-state = 2
+if-agc = yes
+
+frequency = 14100000
 
 [WSPR]
+mode = usb
 data = wspr-pcm.local
 freq = "136k000 474k200 1m836600 3m592600 5m287200 7m038600 10m138700 14m095600 18m104600 21m094600 24m924600 28m124600"
 ```

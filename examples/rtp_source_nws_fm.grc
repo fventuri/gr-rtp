@@ -9,13 +9,14 @@ options:
 
       Below is the ka9q-radio radiod configuration file I used for this example.
 
-      Note that that the input parameter will need to be changed.
-
-      Also note that the ka9q-radio configuration has recently changed.
+      Note that the SDR hardware configuration section will likely have to be changed.
 
 
-      IMPORTANT: check first with ''monitor nws-pcm.local'' to make sure there''s
+
+      IMPORTANT: check first with ''monitor nws-pcm.local'' to make sure there is
       audio on SSRC=162550
+
+      (or one of the other SSRC''s depending on your local NOAA radio channel)
 
 
 
@@ -23,18 +24,34 @@ options:
 
       [global]
 
-      input = rspdx-antC.local
-
-      iface = lo
-
-      samprate = 24000
-
-      mode = fm
-
       status = nws.local
+
+      hardware = sdrplay
+
+
+      [sdrplay]
+
+      device = sdrplay
+
+      description = RSPdx - Antenna C
+
+      #serial =
+
+      antenna = Antenna C
+
+      #samprate = 2000000        ; default is 2M
+
+      lna-state = 2
+
+      if-agc = yes
+
+
+      frequency = 162480000
 
 
       [NWS]
+
+      mode = fm
 
       data = nws-pcm.local
 
@@ -71,7 +88,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: '24000'
+    value: '12000'
   states:
     bus_sink: false
     bus_source: false
@@ -93,7 +110,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [416, 444.0]
+    coordinate: [784, 388.0]
     rotation: 0
     state: enabled
 - name: rtp_source_0
@@ -112,7 +129,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [168, 420.0]
+    coordinate: [496, 364.0]
     rotation: 0
     state: enabled
 
@@ -121,4 +138,4 @@ connections:
 
 metadata:
   file_format: 1
-  grc_version: v3.11.0.0git-503-g35f8a0b3
+  grc_version: v3.11.0.0git-510-g2180acce

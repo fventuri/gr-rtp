@@ -14,7 +14,6 @@ include(GrPlatform) #define LIB_SUFFIX
 list(APPEND rtp_sources
     source_impl.cc
     multicast.c
-    session.c
 )
 
 set(rtp_sources "${rtp_sources}" PARENT_SCOPE)

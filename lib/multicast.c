@@ -1,6 +1,5 @@
-// $Id: multicast.c,v 1.91 2022/10/25 01:57:52 karn Exp $
-// Multicast socket and RTP utility routines
-// Copyright 2018 Phil Karn, KA9Q
+// Multicast socket and RTP utility routines for ka9q-radio
+// Copyright 2018-2023 Phil Karn, KA9Q
 
 // this must come first - fv
 #define _GNU_SOURCE
@@ -720,6 +719,10 @@ static int ipv4_join_group(int const fd,void const * const sock,char const * con
     mreqn.imr_ifindex = 0;
   else
     mreqn.imr_ifindex = if_nametoindex(iface);
+  if(setsockopt(fd,IPPROTO_IP,IP_MULTICAST_IF,&mreqn,sizeof(mreqn)) != 0){
+    perror("multicast v4 set interface");
+    return -1;
+  }
   if(setsockopt(fd,IPPROTO_IP,IP_ADD_MEMBERSHIP,&mreqn,sizeof(mreqn)) != 0){
     perror("multicast v4 join");
     return -1;

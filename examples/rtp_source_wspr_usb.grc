@@ -9,9 +9,8 @@ options:
 
       Below is the ka9q-radio radiod configuration file I used for this example.
 
-      Note that that the input parameter will need to be changed.
+      Note that the SDR hardware configuration section will likely have to be changed.
 
-      Also note that the ka9q-radio configuration has recently changed.
 
 
       IMPORTANT: check first with ''monitor wspr-pcm.local'' to make sure there''s
@@ -23,18 +22,34 @@ options:
 
       [global]
 
-      input = rspdx-antC.local
-
-      iface = lo
-
-      samprate = 12000
-
-      mode = usb
-
       status = wspr.local
+
+      hardware = sdrplay
+
+
+      [sdrplay]
+
+      device = sdrplay
+
+      description = RSPdx - Antenna C
+
+      #serial =
+
+      antenna = Antenna C
+
+      #samprate = 2000000        ; default is 2M
+
+      lna-state = 2
+
+      if-agc = yes
+
+
+      frequency = 14100000
 
 
       [WSPR]
+
+      mode = usb
 
       data = wspr-pcm.local
 
@@ -158,7 +173,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [440, 428.0]
+    coordinate: [968, 300.0]
     rotation: 0
     state: enabled
 - name: rtp_source_0
@@ -177,7 +192,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [168, 420.0]
+    coordinate: [688, 292.0]
     rotation: 0
     state: enabled
 
@@ -186,4 +201,4 @@ connections:
 
 metadata:
   file_format: 1
-  grc_version: v3.11.0.0git-503-g35f8a0b3
+  grc_version: v3.11.0.0git-510-g2180acce
