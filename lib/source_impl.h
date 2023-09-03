@@ -57,8 +57,15 @@ public:
 
 private:
     void check_channels(int channels) const { return; }
+    int get_output_items(int sampcount, int channels, int noutput_channels, int time_step) const {
+        return time_step + sampcount / channels;  // == sampcount for mono, sampcount/2 for stereo
+    }
+    int output_zeroes(int nzeroes, int channels, T** outs,
+                      int noutput_items, int noutput_channels,
+                      int offset = 0) const;
     int output_samples(const void *dp, int size, int channels, T** outs,
-                       int noutput_items, int noutput_channels) const;
+                       int noutput_items, int noutput_channels,
+                       int offset = 0) const;
 
 };
 
