@@ -19,6 +19,8 @@ namespace rtp {
 // Config constants
 static int const Bufsize = 9000; // allow for jumbograms
 
+static struct timeval udp_timeout = {0, 100000};   // set timeout to 0.1s
+
 // internal functions defined below
 static void init(struct pcmstream *pc, struct rtp_header const *rtp,
                  struct sockaddr const *sender);
@@ -47,6 +49,9 @@ source_impl<T>::source_impl(const std::string& mcast_address, unsigned int ssrc,
         this->d_logger->error(error_message);
         throw std::runtime_error(error_message);
     }
+    // set UDP socket timeout so it can be interrupted by Boost
+    setsockopt(mcast_fd, SOL_SOCKET, SO_RCVTIMEO, (char*)&udp_timeout, sizeof(udp_timeout));
+    //this->set_min_noutput_items(1200);
 }
 
 template <typename T>
@@ -66,7 +71,14 @@ int source_impl<T>::work(int noutput_items,
     socklen_t socksize = sizeof(sender);
     uint8_t buffer[Bufsize];
     // Gets all packets to multicast destination address, regardless of sender IP, sender port, dest port, ssrc
-    int size = recvfrom(mcast_fd, buffer, sizeof(buffer), 0, &sender, &socksize);
+    int size;
+    while (1) {
+        boost::this_thread::interruption_point();
+        size = recvfrom(mcast_fd, buffer, sizeof(buffer), 0, &sender, &socksize);
+        if (!(size == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))) {
+            break;
+        }
+    }
     if (size == -1) {
         if (errno != EINTR) { // Happens routinely
             perror("recvmsg");
@@ -136,6 +148,8 @@ int source_impl<T>::work(int noutput_items,
 
     int const sampcount = size / sizeof(int16_t); // # of 16-bit samples, regardless of mono or stereo
     int const framecount = sampcount / pcmstream.channels; // == sampcount for mono, sampcount/2 for stereo
+// fv
+//this->d_logger->info("noutput_items={} noutput_channels={} sampcount={} framecount={}", noutput_items, output_items.size(), sampcount, framecount);
     int offset = 0;
 
     int const time_step = rtp.timestamp - pcmstream.rtp_state.timestamp;
