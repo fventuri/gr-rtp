@@ -72,114 +72,109 @@ int source_impl<T>::work(int noutput_items,
     uint8_t buffer[Bufsize];
     // Gets all packets to multicast destination address, regardless of sender IP, sender port, dest port, ssrc
     int size;
-    while (1) {
+    while (true) {
         boost::this_thread::interruption_point();
         size = recvfrom(mcast_fd, buffer, sizeof(buffer), 0, &sender, &socksize);
-        if (!(size == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))) {
-            break;
-        }
-    }
-    if (size == -1) {
-        if (errno != EINTR) { // Happens routinely
+
+        if (size == -1) {
             perror("recvmsg");
-            usleep(1000);
+            return 0;
         }
-        return 0;
-    }
-    if(size < RTP_MIN_SIZE) {
-        return 0; // Too small to be valid RTP
-    }
-
-    struct rtp_header rtp;
-    auto dp = static_cast<uint8_t const *>(ntoh_rtp(&rtp, buffer));
-
-    size -= dp - buffer;
-    if (rtp.pad) {
-        // Remove padding
-        size -= dp[size-1];
-        rtp.pad = 0;
-    }
-    if (size <= 0) {
-        return 0;
-    }
-
-    if (rtp.ssrc == 0 || (ssrc != 0 && rtp.ssrc != ssrc)) {
-       return 0; // Ignore unwanted or invalid SSRCs
-    }
-
-    if (pcmstream.ssrc == 0) {
-        // First packet on stream, initialize
-        init(&pcmstream, &rtp, &sender);
-
-        if (!quiet) {
-            this->d_logger->info("New session from {}@{}:{}, type {}, channels {}, samprate {}",
-                                 pcmstream.ssrc,
-                                 pcmstream.addr,
-                                 pcmstream.port, rtp.type, pcmstream.channels,
-                                 pcmstream.samprate);
+        if(size < RTP_MIN_SIZE) {
+            continue; // Too small to be valid RTP
         }
-    } else if (rtp.ssrc != pcmstream.ssrc) {
-        return 0; // unwanted SSRC, ignore
-    }
 
-    if (!address_match(&sender, &pcmstream.sender) || getportnumber(&pcmstream.sender) != getportnumber(&sender)) {
-        // Source changed, the sender restarted
-        init(&pcmstream, &rtp, &sender);
-        if (!quiet) {
-            this->d_logger->info("Session restart from {}@{}:{}",
-                                 pcmstream.ssrc,
-                                 pcmstream.addr,
-                                 pcmstream.port);
+        struct rtp_header rtp;
+        auto dp = static_cast<uint8_t const *>(ntoh_rtp(&rtp, buffer));
+
+        size -= dp - buffer;
+        if (rtp.pad) {
+            // Remove padding
+            size -= dp[size-1];
+            rtp.pad = 0;
         }
-    }
-    if (rtp.marker) {
-        pcmstream.rtp_state.timestamp = rtp.timestamp;      // Resynch
-    }
-
-    if (pcmstream.channels != channels_from_pt(rtp.type)){
-        if (!quiet) {
-            this->d_logger->info("Channel count changed from {} to {}", pcmstream.channels, channels_from_pt(rtp.type));
+        if (size <= 0) {
+            continue;
         }
-        pcmstream.channels = channels_from_pt(rtp.type); 
-    }
-    if (pcmstream.channels != 1 && pcmstream.channels != 2) {
-        return 0; // Invalid
-    }
 
-    int const sampcount = size / sizeof(int16_t); // # of 16-bit samples, regardless of mono or stereo
-    int const framecount = sampcount / pcmstream.channels; // == sampcount for mono, sampcount/2 for stereo
-// fv
-//this->d_logger->info("noutput_items={} noutput_channels={} sampcount={} framecount={}", noutput_items, output_items.size(), sampcount, framecount);
-    int offset = 0;
-
-    int const time_step = rtp.timestamp - pcmstream.rtp_state.timestamp;
-    if (time_step < 0) {
-        // Old dupe
-        pcmstream.rtp_state.dupes++;
-        this->d_logger->info("Out of order samples - {} received after {}", rtp.timestamp, pcmstream.rtp_state.timestamp);
-        return 0;
-    } else if (time_step > 0) {
-        pcmstream.rtp_state.drops++;
-        this->d_logger->info("Dropped {} samples - from {} to {}", time_step, pcmstream.rtp_state.timestamp, rtp.timestamp);
-        int const nexpected_output_items = get_output_items(sampcount, pcmstream.channels, output_items.size(), time_step);
-        if (nexpected_output_items <= noutput_items) {  // Arbitrary threshold - clean this up!
-            offset = output_zeroes(time_step, pcmstream.channels, outs,
-                                   noutput_items, output_items.size());
+        if (rtp.ssrc == 0 || (ssrc != 0 && rtp.ssrc != ssrc)) {
+           continue; // Ignore unwanted or invalid SSRCs
         }
-        // Resync
-        pcmstream.rtp_state.timestamp = rtp.timestamp; // Bring up to date?
+
+        if (pcmstream.ssrc == 0) {
+            // First packet on stream, initialize
+            init(&pcmstream, &rtp, &sender);
+
+            if (!quiet) {
+                this->d_logger->info("New session from {}@{}:{}, type {}, channels {}, samprate {}",
+                                     pcmstream.ssrc,
+                                     pcmstream.addr,
+                                     pcmstream.port, rtp.type, pcmstream.channels,
+                                     pcmstream.samprate);
+            }
+        } else if (rtp.ssrc != pcmstream.ssrc) {
+            continue; // unwanted SSRC, ignore
+        }
+
+        if (!address_match(&sender, &pcmstream.sender) || getportnumber(&pcmstream.sender) != getportnumber(&sender)) {
+            // Source changed, the sender restarted
+            init(&pcmstream, &rtp, &sender);
+            if (!quiet) {
+                this->d_logger->info("Session restart from {}@{}:{}",
+                                     pcmstream.ssrc,
+                                     pcmstream.addr,
+                                     pcmstream.port);
+            }
+        }
+        if (rtp.marker) {
+            pcmstream.rtp_state.timestamp = rtp.timestamp;      // Resynch
+        }
+
+        if (pcmstream.channels != channels_from_pt(rtp.type)){
+            if (!quiet) {
+                this->d_logger->info("Channel count changed from {} to {}", pcmstream.channels, channels_from_pt(rtp.type));
+            }
+            pcmstream.channels = channels_from_pt(rtp.type);
+        }
+        if (pcmstream.channels != 1 && pcmstream.channels != 2) {
+            continue; // Invalid
+        }
+
+        int const sampcount = size / sizeof(int16_t); // # of 16-bit samples, regardless of mono or stereo
+        int const framecount = sampcount / pcmstream.channels; // == sampcount for mono, sampcount/2 for stereo
+    // fv
+    //this->d_logger->info("noutput_items={} noutput_channels={} sampcount={} framecount={}", noutput_items, output_items.size(), sampcount, framecount);
+        int offset = 0;
+
+        int const time_step = rtp.timestamp - pcmstream.rtp_state.timestamp;
+        if (time_step < 0) {
+            // Old dupe
+            pcmstream.rtp_state.dupes++;
+            this->d_logger->info("Out of order samples - {} received after {}", rtp.timestamp, pcmstream.rtp_state.timestamp);
+            continue;
+        } else if (time_step > 0) {
+            pcmstream.rtp_state.drops++;
+            this->d_logger->info("Dropped {} samples - from {} to {}", time_step, pcmstream.rtp_state.timestamp, rtp.timestamp);
+            int const nexpected_output_items = get_output_items(sampcount, pcmstream.channels, output_items.size(), time_step);
+            if (nexpected_output_items <= noutput_items) {  // Arbitrary threshold - clean this up!
+                offset = output_zeroes(time_step, pcmstream.channels, outs,
+                                       noutput_items, output_items.size());
+            }
+            // Resync
+            pcmstream.rtp_state.timestamp = rtp.timestamp; // Bring up to date?
+        }
+        pcmstream.rtp_state.bytes += size;
+
+        noutput_items = output_samples(dp, size, pcmstream.channels, outs,
+                                       noutput_items, output_items.size(),
+                                       offset);
+
+        pcmstream.rtp_state.timestamp += framecount;
+        pcmstream.rtp_state.seq = rtp.seq + 1;
+
+        // Tell runtime system how many output items we produced.
+        return noutput_items;
     }
-    pcmstream.rtp_state.bytes += size;
-
-    noutput_items = output_samples(dp, size, pcmstream.channels, outs,
-                                   noutput_items, output_items.size(),
-                                   offset);
-
-    pcmstream.rtp_state.timestamp += framecount;
-    pcmstream.rtp_state.seq = rtp.seq + 1;
-
-    // Tell runtime system how many output items we produced.
-    return noutput_items;
 }
 
 template<>
@@ -455,7 +450,7 @@ static void init(struct pcmstream *pc, struct rtp_header const *rtp,
     pc->type = rtp->type;
     pc->channels = channels_from_pt(rtp->type);
     pc->samprate = samprate_from_pt(rtp->type);
-  
+
     memcpy(&pc->sender,sender,sizeof(pc->sender)); // Remember sender
     getnameinfo((struct sockaddr *)&pc->sender, sizeof(pc->sender),
                 pc->addr,sizeof(pc->addr),
