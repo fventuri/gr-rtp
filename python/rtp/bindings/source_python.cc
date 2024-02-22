@@ -14,7 +14,7 @@
 /* BINDTOOL_GEN_AUTOMATIC(0)                                                       */
 /* BINDTOOL_USE_PYGCCXML(0)                                                        */
 /* BINDTOOL_HEADER_FILE(source.h)                                        */
-/* BINDTOOL_HEADER_FILE_HASH(ad452930c10419610d9d0fc90c27e1c7)                     */
+/* BINDTOOL_HEADER_FILE_HASH(98525d33adec226cfd8164282ba702b6)                     */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
@@ -52,6 +52,17 @@ void bind_source_template(py::module& m, const char *classname)
 
 
         .def("channels", &source::channels, D(source, channels))
+
+
+        .def("set_ssrc",
+             &source::set_ssrc,
+             py::arg("ssrc"),
+             D(source, set_ssrc))
+
+
+        .def("get_ssrc",
+             &source::get_ssrc,
+             D(source, get_ssrc))
 
         ;
 }

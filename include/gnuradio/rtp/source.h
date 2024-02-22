@@ -52,6 +52,20 @@ public:
      * of outputs you can have.
      */
     virtual int channels() const = 0;
+
+    /*!
+     * Set SSRC
+     *
+     * \param ssrc new SSRC
+     */
+    virtual void set_ssrc(unsigned int ssrc) = 0;
+
+    /*!
+     * Get SSRC
+     *
+     * \return current SSRC
+     */
+    virtual unsigned int get_ssrc() const = 0;
 };
 
 } // namespace rtp

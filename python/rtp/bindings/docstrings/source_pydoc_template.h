@@ -24,13 +24,19 @@
 
  static const char *__doc_gr_rtp_source_make = R"doc()doc";
 
-  
+
  static const char *__doc_gr_rtp_source_sample_rate = R"doc()doc";
 
-  
+
  static const char *__doc_gr_rtp_source_bits_per_sample = R"doc()doc";
 
-  
+
  static const char *__doc_gr_rtp_source_channels = R"doc()doc";
 
-  
+
+ static const char *__doc_gr_rtp_source_set_ssrc = R"doc()doc";
+
+
+ static const char *__doc_gr_rtp_source_get_ssrc = R"doc()doc";
+
+

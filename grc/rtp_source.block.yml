@@ -39,6 +39,8 @@ asserts:
 templates:
     imports: from gnuradio import rtp
     make: rtp.source_${output_mode.fcn}(${mcast_address}, ${ssrc}, ${output_mode.multiplicity}, ${quiet})
+    callbacks:
+      - set_ssrc(${ssrc})
 
 cpp_templates:
     includes: ['#include <gnuradio/rtp/source.h>']
@@ -46,8 +48,11 @@ cpp_templates:
     make: |-
       this->${id} = gr::rtp::source_${output_mode.fcn}::make(${mcast_address}${'.c_str()' if str(mcast_address)[0] != "'" and str(file)[0] != "\"" else ''}, ${ssrc}, ${output_mode.multiplicity}, ${quiet});
     translations:
-        'True': 'true'
-        'False': 'false'
+      "'": '"'
+      'True': 'true'
+      'False': 'false'
+    callbacks:
+      - set_ssrc(${ssrc})
 
 documentation: |-
     RTP Source Block:
