@@ -33,25 +33,22 @@ public:
     // gr::rtp:source::sptr
     typedef std::shared_ptr<source<T>> sptr;
 
-    static sptr make(const std::string& mcast_address, unsigned int ssrc, int channels=1, bool quiet=false);
+    static sptr make(const std::string& mcast_address,
+                     unsigned int ssrc,
+                     int in_channels=1,
+                     int out_channels=1,
+                     bool quiet=false);
 
     /*!
-     * \brief Read the sample rate as specified in the RTP stream
-     */
-    virtual int sample_rate() const = 0;
-
-    /*!
-     * \brief Return the number of bits per sample as specified in
+     * \brief Return the number of bits per sample.
      * the RTP stream.
      */
-    virtual int bits_per_sample() const = 0;
+    virtual int get_bits_per_sample() const = 0;
 
     /*!
-     * \brief Return the number of channels in the RTP stream as
-     * specified in the RTP stream. This is also the max number
-     * of outputs you can have.
+     * \brief Return the number of input channels.
      */
-    virtual int channels() const = 0;
+    virtual int get_channels() const = 0;
 
     /*!
      * Set SSRC

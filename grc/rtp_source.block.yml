@@ -19,7 +19,8 @@ parameters:
     option_attributes:
       dtype: [gr_complex, short, float, float, short, short]
       fcn: [c, s, f, f, s, s]
-      multiplicity: [1, 1, 1, 2, 1, 2]
+      in_channels: [2, 2, 1, 2, 1, 2]
+      out_channels: [1, 1, 1, 2, 1, 2]
     default: gr_complex
 -   id: quiet
     label: Quiet
@@ -31,14 +32,14 @@ parameters:
 outputs:
 -   domain: stream
     dtype: ${ output_mode.dtype }
-    multiplicity: ${ output_mode.multiplicity }
+    multiplicity: ${ output_mode.out_channels }
 
 asserts:
--   ${ 1 <= output_mode.multiplicity }
+-   ${ 1 <= output_mode.out_channels }
 
 templates:
     imports: from gnuradio import rtp
-    make: rtp.source_${output_mode.fcn}(${mcast_address}, ${ssrc}, ${output_mode.multiplicity}, ${quiet})
+    make: rtp.source_${output_mode.fcn}(${mcast_address}, ${ssrc}, ${output_mode.in_channels}, ${output_mode.out_channels}, ${quiet})
     callbacks:
       - set_ssrc(${ssrc})
 
@@ -46,7 +47,7 @@ cpp_templates:
     includes: ['#include <gnuradio/rtp/source.h>']
     declarations: 'gr::rtp::source_${output_mode.fcn}::sptr ${id};'
     make: |-
-      this->${id} = gr::rtp::source_${output_mode.fcn}::make(${mcast_address}${'.c_str()' if str(mcast_address)[0] != "'" and str(file)[0] != "\"" else ''}, ${ssrc}, ${output_mode.multiplicity}, ${quiet});
+      this->${id} = gr::rtp::source_${output_mode.fcn}::make(${mcast_address}${'.c_str()' if str(mcast_address)[0] != "'" and str(file)[0] != "\"" else ''}, ${ssrc}, ${output_mode.in_channels}, ${output_mode.out_channels}, ${quiet});
     translations:
       "'": '"'
       'True': 'true'

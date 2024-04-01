@@ -28,8 +28,6 @@ struct pcmstream {
   char port[NI_MAXSERV];    // RTP Sender source port
 
   struct rtp_state rtp_state;
-  int channels;
-  int samprate;
 };
 
 template <class T>
@@ -39,17 +37,22 @@ private:
     int mcast_fd;
     struct pcmstream pcmstream;
     unsigned int ssrc; // Requested SSRC
+    int channels;
     bool quiet;
 
 public:
-    source_impl(const std::string& mcast_address, unsigned int ssrc, int channels=1, bool quiet=false);
+    source_impl(const std::string& mcast_address,
+                unsigned int ssrc,
+                int in_channels=1,
+                int out_channels=1,
+                bool quiet=false);
     ~source_impl();
 
-    int sample_rate() const override { return pcmstream.samprate; };
+    int get_bits_per_sample() const override {
+        return sizeof(std::int16_t) * 8;
+    }
 
-    int bits_per_sample() const override { return sizeof(std::int16_t) * 8; }
-
-    int channels() const override { return pcmstream.channels; };
+    int get_channels() const override { return channels; };
 
     void set_ssrc(unsigned int ssrc) override {
         this->ssrc = ssrc;
@@ -63,7 +66,7 @@ public:
              gr_vector_void_star& output_items);
 
 private:
-    void check_channels(int channels) const { return; }
+    void check_out_channels(int channels) const { return; }
     int get_output_items(int sampcount, int channels, int noutput_channels, int time_step) const {
         return time_step + sampcount / channels;  // == sampcount for mono, sampcount/2 for stereo
     }

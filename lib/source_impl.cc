@@ -26,22 +26,35 @@ static void init(struct pcmstream *pc, struct rtp_header const *rtp,
                  struct sockaddr const *sender);
 
 template <typename T>
-typename source<T>::sptr source<T>::make(const std::string& mcast_address, unsigned int ssrc, int channels, bool quiet)
+typename source<T>::sptr source<T>::make(const std::string& mcast_address,
+                                         unsigned int ssrc,
+                                         int in_channels,
+                                         int out_channels,
+                                         bool quiet)
 {
-    return gnuradio::make_block_sptr<source_impl<T>>(mcast_address, ssrc, channels, quiet);
+    return gnuradio::make_block_sptr<source_impl<T>>(mcast_address,
+                                                     ssrc,
+                                                     in_channels,
+                                                     out_channels,
+                                                     quiet);
 }
 
 template <typename T>
-source_impl<T>::source_impl(const std::string& mcast_address, unsigned int ssrc, int channels, bool quiet)
+source_impl<T>::source_impl(const std::string& mcast_address,
+                            unsigned int ssrc,
+                            int in_channels,
+                            int out_channels,
+                            bool quiet)
     : gr::sync_block("rtp_source",
                      gr::io_signature::make(0, 0, 0),
-                     gr::io_signature::make(channels, channels, sizeof(T))),
+                     gr::io_signature::make(out_channels, out_channels, sizeof(T))),
       mcast_fd(-1),
       pcmstream{}, // Init with zeros
       ssrc(ssrc),
+      channels(in_channels),
       quiet(quiet)
 {
-    check_channels(channels);
+    check_out_channels(out_channels);
     // Set up multicast input
     mcast_fd = setup_mcast_in(mcast_address.c_str(), NULL, 0);
     if (mcast_fd == -1) {
@@ -106,11 +119,10 @@ int source_impl<T>::work(int noutput_items,
             init(&pcmstream, &rtp, &sender);
 
             if (!quiet) {
-                this->d_logger->info("New session from {}@{}:{}, type {}, channels {}, samprate {}",
+                this->d_logger->info("New session from {}@{}:{}",
                                      pcmstream.ssrc,
                                      pcmstream.addr,
-                                     pcmstream.port, rtp.type, pcmstream.channels,
-                                     pcmstream.samprate);
+                                     pcmstream.port);
             }
         } else if (rtp.ssrc != pcmstream.ssrc) {
             continue; // unwanted SSRC, ignore
@@ -130,20 +142,10 @@ int source_impl<T>::work(int noutput_items,
             pcmstream.rtp_state.timestamp = rtp.timestamp;      // Resynch
         }
 
-        if (pcmstream.channels != channels_from_pt(rtp.type)){
-            if (!quiet) {
-                this->d_logger->info("Channel count changed from {} to {}", pcmstream.channels, channels_from_pt(rtp.type));
-            }
-            pcmstream.channels = channels_from_pt(rtp.type);
-        }
-        if (pcmstream.channels != 1 && pcmstream.channels != 2) {
-            continue; // Invalid
-        }
-
         int const sampcount = size / sizeof(int16_t); // # of 16-bit samples, regardless of mono or stereo
-        int const framecount = sampcount / pcmstream.channels; // == sampcount for mono, sampcount/2 for stereo
-    // fv
-    //this->d_logger->info("noutput_items={} noutput_channels={} sampcount={} framecount={}", noutput_items, output_items.size(), sampcount, framecount);
+        int const framecount = sampcount / channels; // == sampcount for mono, sampcount/2 for stereo
+        // fv
+        //this->d_logger->info("noutput_items={} noutput_channels={} sampcount={} framecount={}", noutput_items, output_items.size(), sampcount, framecount);
         int offset = 0;
 
         int const time_step = rtp.timestamp - pcmstream.rtp_state.timestamp;
@@ -155,9 +157,9 @@ int source_impl<T>::work(int noutput_items,
         } else if (time_step > 0) {
             pcmstream.rtp_state.drops++;
             this->d_logger->info("Dropped {} samples - from {} to {}", time_step, pcmstream.rtp_state.timestamp, rtp.timestamp);
-            int const nexpected_output_items = get_output_items(sampcount, pcmstream.channels, output_items.size(), time_step);
+            int const nexpected_output_items = get_output_items(sampcount, channels, output_items.size(), time_step);
             if (nexpected_output_items <= noutput_items) {  // Arbitrary threshold - clean this up!
-                offset = output_zeroes(time_step, pcmstream.channels, outs,
+                offset = output_zeroes(time_step, channels, outs,
                                        noutput_items, output_items.size());
             }
             // Resync
@@ -165,9 +167,8 @@ int source_impl<T>::work(int noutput_items,
         }
         pcmstream.rtp_state.bytes += size;
 
-        noutput_items = output_samples(dp, size, pcmstream.channels, outs,
-                                       noutput_items, output_items.size(),
-                                       offset);
+        noutput_items = output_samples(dp, size, channels, outs, noutput_items,
+                                       output_items.size(), offset);
 
         pcmstream.rtp_state.timestamp += framecount;
         pcmstream.rtp_state.seq = rtp.seq + 1;
@@ -178,7 +179,7 @@ int source_impl<T>::work(int noutput_items,
 }
 
 template<>
-void source_impl<gr_complex>::check_channels(int channels) const
+void source_impl<gr_complex>::check_out_channels(int channels) const
 {
     if (channels > 1) {
         throw std::runtime_error("gr_complex requires only 1 output");
@@ -448,8 +449,6 @@ static void init(struct pcmstream *pc, struct rtp_header const *rtp,
     // First packet on stream, initialize
     pc->ssrc = rtp->ssrc;
     pc->type = rtp->type;
-    pc->channels = channels_from_pt(rtp->type);
-    pc->samprate = samprate_from_pt(rtp->type);
 
     memcpy(&pc->sender,sender,sizeof(pc->sender)); // Remember sender
     getnameinfo((struct sockaddr *)&pc->sender, sizeof(pc->sender),

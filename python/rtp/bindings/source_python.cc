@@ -14,7 +14,7 @@
 /* BINDTOOL_GEN_AUTOMATIC(0)                                                       */
 /* BINDTOOL_USE_PYGCCXML(0)                                                        */
 /* BINDTOOL_HEADER_FILE(source.h)                                        */
-/* BINDTOOL_HEADER_FILE_HASH(98525d33adec226cfd8164282ba702b6)                     */
+/* BINDTOOL_HEADER_FILE_HASH(ef8b19d120ecba16aa0100548e088506)                     */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
@@ -38,20 +38,18 @@ void bind_source_template(py::module& m, const char *classname)
         .def(py::init(&source::make),
              py::arg("mcast_addresss"),
              py::arg("ssrc"),
-             py::arg("channels") = 1,
+             py::arg("in_channels") = 1,
+             py::arg("out_channels") = 1,
              py::arg("quiet") = false,
              D(source, make))
 
 
-        .def("sample_rate", &source::sample_rate, D(source, sample_rate))
+        .def("get_bits_per_sample",
+             &source::get_bits_per_sample,
+             D(source, get_bits_per_sample))
 
 
-        .def("bits_per_sample",
-             &source::bits_per_sample,
-             D(source, bits_per_sample))
-
-
-        .def("channels", &source::channels, D(source, channels))
+        .def("get_channels", &source::get_channels, D(source, get_channels))
 
 
         .def("set_ssrc",
