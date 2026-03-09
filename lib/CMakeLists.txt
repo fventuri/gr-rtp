@@ -13,7 +13,9 @@ include(GrPlatform) #define LIB_SUFFIX
 
 list(APPEND rtp_sources
     source_impl.cc
+    misc.c
     multicast.c
+    rtp.c
 )
 
 set(rtp_sources "${rtp_sources}" PARENT_SCOPE)
@@ -28,7 +30,10 @@ target_include_directories(gnuradio-rtp
     PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
     PUBLIC $<INSTALL_INTERFACE:include>
   )
-set_target_properties(gnuradio-rtp PROPERTIES DEFINE_SYMBOL "gnuradio_rtp_EXPORTS")
+set_target_properties(gnuradio-rtp PROPERTIES
+    DEFINE_SYMBOL "gnuradio_rtp_EXPORTS"
+    C_EXTENSIONS ON
+  )
 
 if(APPLE)
     set_target_properties(gnuradio-rtp PROPERTIES

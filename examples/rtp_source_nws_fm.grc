@@ -1,9 +1,8 @@
 options:
   parameters:
+    alias: ''
     author: Franco Venturi
     catch_exceptions: 'True'
-    category: '[GRC Hier Blocks]'
-    cmake_opt: ''
     comment: 'Simple flowgraph to listen to a NOAA radio stream from ka9q-radio
 
 
@@ -14,7 +13,7 @@ options:
 
 
       IMPORTANT: check first with ''monitor nws-pcm.local'' to make sure there is
-      audio on SSRC=162550
+      audio on SSRC=162500
 
       (or one of the other SSRC''s depending on your local NOAA radio channel)
 
@@ -58,23 +57,19 @@ options:
       freq = "162m400 162m425 162m450 162m475 162m500 162m525 162m550"'
     copyright: ''
     description: ''
-    gen_cmake: 'On'
     gen_linking: dynamic
     generate_options: no_gui
+    generator_class_name: PythonNoGuiGenerator
+    generator_module: gnuradio.grc.workflows.python_nogui
     hier_block_src_path: '.:'
     id: rtp_source_nws_fm
     max_nouts: '0'
     output_language: python
-    placement: (0,0)
-    qt_qss_theme: ''
     realtime_scheduling: ''
-    run: 'True'
     run_command: '{python} -u {filename}'
     run_options: prompt
-    sizing_mode: fixed
     thread_safe_setters: ''
     title: RTP source - NOAA FM
-    window_size: (1000,1000)
   states:
     bus_sink: false
     bus_source: false
@@ -88,7 +83,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: '12000'
+    value: '24000'
   states:
     bus_sink: false
     bus_source: false
@@ -124,7 +119,7 @@ blocks:
     minoutbuf: '0'
     output_mode: float-one-channel
     quiet: 'False'
-    ssrc: '162550'
+    ssrc: '162500'
   states:
     bus_sink: false
     bus_source: false
@@ -138,4 +133,4 @@ connections:
 
 metadata:
   file_format: 1
-  grc_version: v3.11.0.0git-510-g2180acce
+  grc_version: v3.11.0.0git-1083-ge2c22a2b

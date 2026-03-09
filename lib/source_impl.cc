@@ -1,7 +1,7 @@
 /* -*- c++ -*- */
 /*
- * Copyright 2023 Franco Venturi.
- * Copyright 2023 Phil Karn, KA9Q
+ * Copyright 2026 Franco Venturi.
+ * Copyright 2026 Phil Karn, KA9Q
  *
  * based on:
  * - pcmcat in ka9q-radio
@@ -22,7 +22,7 @@ static int const Bufsize = 9000; // allow for jumbograms
 static struct timeval udp_timeout = {0, 100000};   // set timeout to 0.1s
 
 // internal functions defined below
-static void init(struct pcmstream *pc, struct rtp_header const *rtp,
+static int init(struct pcmstream *pc, struct rtp_header const *rtp,
                  struct sockaddr const *sender);
 
 template <typename T>
@@ -56,7 +56,7 @@ source_impl<T>::source_impl(const std::string& mcast_address,
 {
     check_out_channels(out_channels);
     // Set up multicast input
-    mcast_fd = setup_mcast_in(mcast_address.c_str(), NULL, 0);
+    mcast_fd = setup_mcast_in(NULL, NULL, mcast_address.c_str(), NULL, 0, 0);
     if (mcast_fd == -1) {
         auto error_message = std::string("Can't set up input from \"") + mcast_address + "\"";
         this->d_logger->error(error_message);
@@ -119,10 +119,13 @@ int source_impl<T>::work(int noutput_items,
             init(&pcmstream, &rtp, &sender);
 
             if (!quiet) {
-                this->d_logger->info("New session from {}@{}:{}",
+                this->d_logger->info("New session from {}@{}, payload type {}, samprate {}, channels {}, encoding {}",
                                      pcmstream.ssrc,
-                                     pcmstream.addr,
-                                     pcmstream.port);
+                                     pcmstream.source,
+                                     rtp.type,
+                                     PT_table[rtp.type].samprate,
+                                     PT_table[rtp.type].channels,
+                                     encoding_string(PT_table[rtp.type].encoding));
             }
         } else if (rtp.ssrc != pcmstream.ssrc) {
             continue; // unwanted SSRC, ignore
@@ -132,46 +135,71 @@ int source_impl<T>::work(int noutput_items,
             // Source changed, the sender restarted
             init(&pcmstream, &rtp, &sender);
             if (!quiet) {
-                this->d_logger->info("Session restart from {}@{}:{}",
+                this->d_logger->info("Session restart from {}@{}",
                                      pcmstream.ssrc,
-                                     pcmstream.addr,
-                                     pcmstream.port);
+                                     pcmstream.source);
             }
         }
-        if (rtp.marker) {
-            pcmstream.rtp_state.timestamp = rtp.timestamp;      // Resynch
-        }
 
-        int const sampcount = size / sizeof(int16_t); // # of 16-bit samples, regardless of mono or stereo
-        int const framecount = sampcount / channels; // == sampcount for mono, sampcount/2 for stereo
-        // fv
-        //this->d_logger->info("noutput_items={} noutput_channels={} sampcount={} framecount={}", noutput_items, output_items.size(), sampcount, framecount);
         int offset = 0;
 
-        int const time_step = rtp.timestamp - pcmstream.rtp_state.timestamp;
-        if (time_step < 0) {
-            // Old dupe
-            pcmstream.rtp_state.dupes++;
-            this->d_logger->info("Out of order samples - {} received after {}", rtp.timestamp, pcmstream.rtp_state.timestamp);
-            continue;
-        } else if (time_step > 0) {
-            pcmstream.rtp_state.drops++;
-            this->d_logger->info("Dropped {} samples - from {} to {}", time_step, pcmstream.rtp_state.timestamp, rtp.timestamp);
-            int const nexpected_output_items = get_output_items(sampcount, channels, output_items.size(), time_step);
-            if (nexpected_output_items <= noutput_items) {  // Arbitrary threshold - clean this up!
-                offset = output_zeroes(time_step, channels, outs,
-                                       noutput_items, output_items.size());
+        if (!rtp.marker) {
+            // Change in sequence number from last RTP packet
+            int seq_change = (int16_t)(rtp.seq - pcmstream.last_header.seq);
+            if (seq_change == 1) {
+                // Normal case: next expected packet in sequence
+                if (rtp.timestamp != pcmstream.last_header.timestamp) {
+                    // There's no marker, this packet is in sequence after the
+                    // last one, we now know bytes per timestamp count
+                    int new_framesize = pcmstream.last_size / (int32_t)(rtp.timestamp - pcmstream.last_header.timestamp);
+                    if (new_framesize != pcmstream.framesize) {
+                        pcmstream.framesize = new_framesize;
+                        if (!quiet) {
+                            this->d_logger->info("{} bytes/Timestamp count",
+                                                 pcmstream.framesize);
+                        }
+                    }
+                }
+            } else if (seq_change > 1) {
+                // Something got dropped. Emit some padding if it's not too
+                // much and we know the framesize
+                // This will get invoked on the first packet, but nothing will
+                // happen because Pcmstream.framesize == 0
+                int time_step = (int32_t)(rtp.timestamp - pcmstream.last_header.timestamp) - pcmstream.last_size;
+                if (!quiet && pcmstream.framesize != 0) {
+                    this->d_logger->info("Dropped packet, expected seq {}, got seq {}, lost {} frames",
+                                         (int16_t)(pcmstream.last_header.seq + 1),
+                                         rtp.seq,
+                                         time_step);
+                }
+
+                if (pcmstream.framesize != 0 && time_step >= 0 && time_step < FULL_SAMPRATE) {  // arbitrary, make this a parameter
+                    offset = output_zeroes(time_step,
+                                           channels, outs, noutput_items,
+                                           output_items.size());
+                }
+            } else {
+                // Else drop duplicate or old out of sequence - should buffer
+                // these under user control
+                if (!quiet) {
+                    this->d_logger->info("Discarding old packet, expected seq {}, got seq {}, timestamp {}, size {} bytes, {} frames",
+                                         (int16_t)(pcmstream.last_header.seq + 1),
+                                         rtp.seq,
+                                         rtp.timestamp,
+                                         size,
+                                         size * pcmstream.last_size);
+                }
+                goto done;
             }
-            // Resync
-            pcmstream.rtp_state.timestamp = rtp.timestamp; // Bring up to date?
         }
-        pcmstream.rtp_state.bytes += size;
 
         noutput_items = output_samples(dp, size, channels, outs, noutput_items,
                                        output_items.size(), offset);
 
-        pcmstream.rtp_state.timestamp += framecount;
-        pcmstream.rtp_state.seq = rtp.seq + 1;
+done:
+        pcmstream.bytes_received += size;
+        pcmstream.last_header = rtp;
+        pcmstream.last_size = size;
 
         // Tell runtime system how many output items we produced.
         return noutput_items;
@@ -444,22 +472,16 @@ int source_impl<std::int16_t>::output_samples(const void *dp,
     return offset + samples;
 }
 
-static void init(struct pcmstream *pc, struct rtp_header const *rtp,
-                 struct sockaddr const *sender) {
+static int init(struct pcmstream *pc, struct rtp_header const *rtp,
+                struct sockaddr const *sender) {
     // First packet on stream, initialize
     pc->ssrc = rtp->ssrc;
     pc->type = rtp->type;
+    pc->framesize = 0; // unknown
 
-    memcpy(&pc->sender,sender,sizeof(pc->sender)); // Remember sender
-    getnameinfo((struct sockaddr *)&pc->sender, sizeof(pc->sender),
-                pc->addr,sizeof(pc->addr),
-                pc->port,sizeof(pc->port), NI_NOFQDN | NI_DGRAM);
-    pc->rtp_state.timestamp = rtp->timestamp;
-    pc->rtp_state.seq = rtp->seq;
-    pc->rtp_state.packets = 0;
-    pc->rtp_state.bytes = 0;
-    pc->rtp_state.drops = 0;
-    pc->rtp_state.dupes = 0;
+    memcpy(&pc->sender, sender, sizeof(pc->sender)); // Remember sender
+    pc->source = formatsock(&pc->sender, false);
+    return 0;
 }
 
 template class source<gr_complex>;

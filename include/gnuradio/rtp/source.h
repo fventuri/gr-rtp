@@ -1,6 +1,6 @@
 /* -*- c++ -*- */
 /*
- * Copyright 2023 Franco Venturi.
+ * Copyright 2026 Franco Venturi.
  *
  * based on:
  * - pcmcat in ka9q-radio

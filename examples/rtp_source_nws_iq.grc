@@ -1,9 +1,8 @@
 options:
   parameters:
+    alias: ''
     author: Franco Venturi
     catch_exceptions: 'True'
-    category: '[GRC Hier Blocks]'
-    cmake_opt: ''
     comment: 'Simple flowgraph to listen to a NOAA radio stream from ka9q-radio directly
       from the I/Q output
 
@@ -56,26 +55,23 @@ options:
 
       data = nws-iq-pcm.local
 
-      freq = 162m550'
+      freq = 162m500'
     copyright: ''
     description: ''
-    gen_cmake: 'On'
     gen_linking: dynamic
     generate_options: qt_gui
+    generator_class_name: PythonQtGuiGenerator
+    generator_module: gnuradio.grc.workflows.python_qt_gui
     hier_block_src_path: '.:'
     id: rtp_source_nws_iq
     max_nouts: '0'
     output_language: python
-    placement: (0,0)
     qt_qss_theme: ''
     realtime_scheduling: ''
     run: 'True'
     run_command: '{python} -u {filename}'
-    run_options: prompt
-    sizing_mode: fixed
     thread_safe_setters: ''
     title: RTP source - NOAA IQ->FM
-    window_size: (1000,1000)
   states:
     bus_sink: false
     bus_source: false
@@ -154,6 +150,7 @@ blocks:
     const: volume
     maxoutbuf: '0'
     minoutbuf: '0'
+    mode: vector
     type: float
     vlen: '1'
   states:
@@ -255,7 +252,7 @@ blocks:
     minoutbuf: '0'
     output_mode: gr_complex
     quiet: 'False'
-    ssrc: '162550'
+    ssrc: '162500'
   states:
     bus_sink: false
     bus_source: false
@@ -272,4 +269,4 @@ connections:
 
 metadata:
   file_format: 1
-  grc_version: v3.11.0.0git-510-g2180acce
+  grc_version: v3.11.0.0git-1083-ge2c22a2b

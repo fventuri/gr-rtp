@@ -1,6 +1,6 @@
 /* -*- c++ -*- */
 /*
- * Copyright 2023 Franco Venturi.
+ * Copyright 2026 Franco Venturi.
  *
  * based on:
  * - pcmcat in ka9q-radio
@@ -14,7 +14,12 @@
 
 #include <gnuradio/rtp/source.h>
 
+extern "C" {
 #include "multicast.h"
+#include "rtp.h"
+}
+
+#define FULL_SAMPRATE (48000)
 
 namespace gr {
 namespace rtp {
@@ -24,10 +29,12 @@ struct pcmstream {
   int type;                 // RTP type (10,11,20)
 
   struct sockaddr sender;
-  char addr[NI_MAXHOST];    // RTP Sender IP address
-  char port[NI_MAXSERV];    // RTP Sender source port
+  char const *source;
+  int framesize;            // Bytes per timestamp increment
 
-  struct rtp_state rtp_state;
+  long long bytes_received;
+  struct rtp_header last_header;
+  int last_size;
 };
 
 template <class T>
